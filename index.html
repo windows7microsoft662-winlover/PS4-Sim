@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PS4 Sim</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #003aa8;
+      color: #fff;
+    }
+
+    body {
+      position: relative;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      transition: opacity 700ms ease, transform 700ms ease;
+    }
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(1.015);
+    }
+
+    .boot-screen {
+      background: #050507;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .boot-wave,
+    .boot-wave::before,
+    .boot-wave::after {
+      content: "";
+      position: absolute;
+      inset: -12%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.02), transparent 58%);
+      animation: slowPulse 6s ease-in-out infinite;
+      filter: blur(18px);
+    }
+
+    .boot-wave::before {
+      animation-duration: 8s;
+      opacity: 0.35;
+    }
+
+    .boot-wave::after {
+      animation-duration: 10s;
+      opacity: 0.22;
+    }
+
+    @keyframes slowPulse {
+      0%, 100% { transform: scale(0.985); opacity: 0.55; }
+      50% { transform: scale(1.02); opacity: 0.82; }
+    }
+
+    .boot-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      width: min(90vw, 900px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      text-shadow: 0 4px 18px rgba(0,0,0,0.3);
+    }
+
+    .ps-mark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 0;
+    }
+
+    .ps-icon {
+      font-size: 118px;
+      font-weight: 700;
+      letter-spacing: -4px;
+      line-height: 1;
+      color: rgba(255,255,255,0.98);
+      text-shadow: 0 0 20px rgba(255,255,255,0.04);
+    }
+
+    .ps-word {
+      display: none;
+    }
+
+    .boot-title {
+      display: none;
+    }
+
+    .boot-subtitle {
+      display: none;
+    }
+
+    .boot-key {
+      display: none;
+    }
+
+    @keyframes bootBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    .boot-footer {
+      display: none;
+    }
+
+    .boot-press {
+      position: absolute;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.82);
+      letter-spacing: 0.2px;
+      animation: bootBlink 1.6s ease-in-out infinite;
+    }
+
+    .boot-screen.shutdown .boot-press {
+      display: none;
+    }
+
+    .boot-screen.off-state {
+      background: #020204;
+    }
+
+    .boot-screen.rest-state {
+      background: radial-gradient(circle at 50% 35%, rgba(38, 88, 255, 0.08), transparent 22%), #03040a;
+    }
+
+    .boot-screen.off-state .ps-icon,
+    .boot-screen.rest-state .ps-icon {
+      opacity: 0.96;
+    }
+
+    .boot-button-wrap {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      z-index: 5;
+    }
+
+    .boot-screen.off-state .boot-button-wrap,
+    .boot-screen.rest-state .boot-button-wrap {
+      display: block;
+    }
+
+    .boot-up-btn {
+      border: 1px solid rgba(255,255,255,0.45);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.95);
+      padding: 14px 26px;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 300;
+      letter-spacing: 0.2px;
+      cursor: pointer;
+      transition: background 180ms ease, transform 180ms ease, border-color 180ms ease;
+    }
+
+    .boot-up-btn:hover {
+      background: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.6);
+      transform: scale(1.02);
+    }
+
+    .action-screen {
+      background:
+        radial-gradient(circle at 35% 22%, rgba(255,255,255,0.2), transparent 28%),
+        radial-gradient(circle at 72% 16%, rgba(255,255,255,0.08), transparent 24%),
+        linear-gradient(180deg, #4d75ef 0%, #224cd8 38%, #1538bf 65%, #1536b9 100%);
+      overflow: hidden;
+    }
+
+    .action-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 30% 50%, rgba(255,255,255,0.08), transparent 32%),
+        linear-gradient(145deg, transparent 0 12%, rgba(255,255,255,0.08) 12.4%, transparent 13%),
+        linear-gradient(190deg, transparent 0 72%, rgba(103, 228, 255, 0.22) 72.6%, transparent 74.2%);
+      pointer-events: none;
+    }
+
+    .action-wave {
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      bottom: 12%;
+      height: 36%;
+      border-radius: 50%;
+      border-top: 10px solid rgba(123, 231, 255, 0.14);
+      transform: rotate(-10deg);
+      filter: blur(1px);
+      opacity: 0.95;
+    }
+
+    .action-wave::before {
+      content: "";
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 28px;
+      height: 70%;
+      border-radius: 50%;
+      border-top: 8px solid rgba(149, 246, 255, 0.11);
+    }
+
+    .action-content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.98);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    .action-wrap {
+      width: min(1180px, 88vw);
+      position: relative;
+      min-height: 460px;
+    }
+
+    .action-topline {
+      position: absolute;
+      left: 420px;
+      top: 72px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 32px;
+      font-weight: 300;
+    }
+
+    .shape-stack {
+      width: 76px;
+      height: 48px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 3px 10px;
+      place-items: center;
+      font-size: 26px;
+      line-height: 1;
+      color: rgba(227, 255, 255, 0.9);
+    }
+
+    .action-body {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 160px;
+      display: flex;
+      align-items: center;
+      gap: 54px;
+    }
+
+    .ps4-box {
+      width: 250px;
+      height: 250px;
+      border: 3px solid rgba(223, 255, 255, 0.72);
+      border-radius: 6px;
+      position: relative;
+      margin-left: 16px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset;
+    }
+
+    .ps4-box::before {
+      content: '🔌';
+      position: absolute;
+      left: 50%;
+      top: 46%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      opacity: 0.92;
+      filter: grayscale(1) brightness(1.9);
+    }
+
+    .ps4-light {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(115, 246, 255, 0.55), rgba(164, 252, 255, 0.92), rgba(115, 246, 255, 0.55));
+      box-shadow: 0 0 12px rgba(116, 242, 255, 0.75);
+      animation: powerPulse 1.25s ease-in-out infinite;
+    }
+
+    @keyframes powerPulse {
+      0%, 100% { opacity: 0.9; transform: scaleX(1); }
+      50% { opacity: 0.45; transform: scaleX(0.96); }
+    }
+
+    .action-message {
+      max-width: 700px;
+      font-size: 28px;
+      line-height: 1.55;
+      font-weight: 300;
+      color: rgba(245,255,255,0.96);
+    }
+
+    .action-note {
+      margin-top: 18px;
+      max-width: 780px;
+    }
+
+    .home-screen {
+      background: linear-gradient(180deg, #0b55d8 0%, #0240b8 45%, #0236a6 100%);
+      overflow: hidden;
+    }
+
+    .home-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 100%, rgba(255,255,255,0.05), transparent 28%),
+        linear-gradient(155deg, transparent 0 55%, rgba(255,255,255,0.05) 55.3%, transparent 56.2%),
+        linear-gradient(160deg, transparent 0 68%, rgba(255,255,255,0.04) 68.3%, transparent 69.2%);
+      pointer-events: none;
+    }
+
+    .top-icons {
+      position: absolute;
+      top: 34px;
+      left: 54px;
+      right: 54px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 5;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .top-left,
+    .top-center,
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+
+    .top-left {
+      font-size: 31px;
+    }
+
+    .top-center {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      gap: 16px;
+      font-size: 18px;
+      font-weight: 300;
+      white-space: nowrap;
+    }
+
+    .profile-pic {
+      width: 44px;
+      height: 44px;
+      border-radius: 2px;
+      background: linear-gradient(135deg, #f4f4f4, #cfcfcf 55%, #959595);
+      border: 1px solid rgba(255,255,255,0.65);
+      display: grid;
+      place-items: center;
+      color: #1a1a1a;
+      font-size: 18px;
+      font-weight: 700;
+      overflow: hidden;
+    }
+
+    .tiny-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.55);
+      background: #20d3ff;
+      box-shadow: 0 0 10px rgba(32,211,255,0.45);
+    }
+
+    .username {
+      font-size: 22px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .plus-badge {
+      color: #f4c600;
+      font-size: 24px;
+    }
+
+    .top-right {
+      font-size: 22px;
+      font-weight: 300;
+      gap: 28px;
+    }
+
+    .trophy-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 20px;
+    }
+
+    .time {
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: 0.5px;
+    }
+
+    .main-row {
+      position: absolute;
+      left: 58px;
+      right: 0;
+      top: 175px;
+      display: flex;
+      align-items: flex-start;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .carousel-window {
+      width: calc(100vw - 58px);
+      overflow: hidden;
+      pointer-events: auto;
+    }
+
+    .tiles {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      overflow: visible;
+      transition: transform 320ms ease;
+      will-change: transform;
+    }
+
+    .tile {
+      width: 210px;
+      height: 210px;
+      flex: 0 0 auto;
+      background: rgba(0, 38, 123, 0.42);
+      border: 1px solid rgba(255,255,255,0.07);
+      position: relative;
+      transition: transform 180ms ease, opacity 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+      opacity: 0.98;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: rgba(255,255,255,0.97);
+      overflow: hidden;
+    }
+
+    .tile.small {
+      width: 205px;
+      height: 205px;
+    }
+
+    .tile.active {
+      width: 345px;
+      height: 435px;
+      border: 4px solid rgba(255,255,255,0.62);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.2);
+      background: linear-gradient(135deg, rgba(190,215,255,0.58), rgba(95,144,228,0.58) 48%, rgba(23,73,185,0.42));
+      align-items: stretch;
+      justify-content: space-between;
+      padding: 0;
+      margin-top: -8px;
+      z-index: 2;
+    }
+
+    .tile.active::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.28), transparent 45%, rgba(255,255,255,0.05));
+      pointer-events: none;
+    }
+
+    .tile-icon {
+      font-size: 86px;
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: 4px;
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 0 10px;
+    }
+
+    .tile-label {
+      position: absolute;
+      left: 20px;
+      bottom: 16px;
+      right: 10px;
+      font-size: 18px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.95);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tile.active .tile-label {
+      position: static;
+      padding: 0 18px 14px 18px;
+      font-size: 18px;
+      opacity: 0.95;
+      white-space: normal;
+    }
+
+    .active-main {
+      height: 82%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .active-bottom {
+      height: 64px;
+      border-top: 2px solid rgba(255,255,255,0.26);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: rgba(255,255,255,0.95);
+    }
+
+    .section-title {
+      position: absolute;
+      left: 548px;
+      top: 470px;
+      font-size: 68px;
+      font-weight: 300;
+      letter-spacing: 0.2px;
+      color: rgba(255,255,255,0.97);
+      z-index: 4;
+      white-space: nowrap;
+      transition: transform 320ms ease, opacity 200ms ease;
+    }
+
+    .feed-area {
+      position: absolute;
+      left: 152px;
+      top: 735px;
+      width: 1060px;
+      height: 320px;
+      background: rgba(78, 134, 229, 0.38);
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      transition: transform 320ms ease, opacity 220ms ease;
+    }
+
+    .feed-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px 0 16px;
+    }
+
+    .mini-avatar, .mini-cover {
+      width: 118px;
+      height: 118px;
+      background: rgba(255,255,255,0.25);
+      object-fit: cover;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .feed-text {
+      font-size: 24px;
+      font-weight: 300;
+      line-height: 1.15;
+      color: rgba(255,255,255,0.96);
+      max-width: 760px;
+    }
+
+    .feed-text strong {
+      font-weight: 600;
+    }
+
+    .feed-time {
+      font-size: 18px;
+      color: rgba(255,255,255,0.8);
+      margin-top: 8px;
+    }
+
+    .feed-image {
+      width: 520px;
+      height: 220px;
+      margin: 24px auto 0 auto;
+      background: linear-gradient(135deg, #0e1826, #41577b 42%, #dce8f8 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feed-image::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 35% 22%, rgba(255,255,255,0.75), transparent 18%),
+        linear-gradient(125deg, rgba(0,0,0,0.6), transparent 42%);
+      opacity: 0.85;
+    }
+
+    .side-panel {
+      position: absolute;
+      right: 150px;
+      top: 720px;
+      width: 520px;
+      z-index: 3;
+      color: rgba(255,255,255,0.9);
+      transition: transform 320ms ease, opacity 220ms ease;
+    }
+
+    .side-title {
+      font-size: 28px;
+      font-weight: 300;
+      margin-bottom: 10px;
+    }
+
+    .now-playing {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 54px;
+    }
+
+    .np-cover {
+      width: 88px;
+      height: 88px;
+      background: linear-gradient(135deg, #dce6ef, #89b7dd 60%, #4f6d9b);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .np-cover::before {
+      content: "";
+      position: absolute;
+      inset: 14px 28px;
+      background: linear-gradient(180deg, #991f47, #1f3e73);
+      transform: skewY(-16deg);
+    }
+
+    .np-text {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 20px;
+      font-weight: 300;
+    }
+
+    .np-sub {
+      color: rgba(255,255,255,0.75);
+    }
+
+    .trend-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 46px;
+    }
+
+    .trend-card {
+      width: 120px;
+      height: 68px;
+      background: linear-gradient(135deg, rgba(11,13,22,0.95), rgba(85,93,128,0.9));
+      position: relative;
+      overflow: hidden;
+    }
+
+    .trend-card::before {
+      content: "▶";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,0.55);
+      font-size: 24px;
+    }
+
+    .players-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .player-chip {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #d6d6d6, #8cb6e3);
+      border: 1px solid rgba(255,255,255,0.45);
+    }
+
+    .hintbar {
+      position: absolute;
+      left: 34px;
+      bottom: 20px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      font-size: 13px;
+      color: rgba(255,255,255,0.72);
+      z-index: 6;
+    }
+
+    .power-panel {
+      position: absolute;
+      right: 72px;
+      top: 120px;
+      width: 340px;
+      background: rgba(7, 25, 79, 0.82);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.32);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-18px);
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+
+    .power-panel.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .power-header {
+      padding: 18px 22px 12px 22px;
+      font-size: 24px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.96);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .power-option {
+      padding: 18px 22px;
+      font-size: 22px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.88);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: transparent;
+      transition: background 160ms ease, color 160ms ease;
+    }
+
+    .power-option:last-child {
+      border-bottom: 0;
+    }
+
+    .power-option.active {
+      background: rgba(255,255,255,0.16);
+      color: rgba(255,255,255,0.98);
+    }
+
+    .screen-shift {
+      transform: translateY(120px);
+      transition: transform 260ms ease;
+    }
+
+    .hint {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      min-width: 22px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .tile.nfs { background: linear-gradient(135deg, rgba(0,0,0,0.45), rgba(215,56,132,0.45), rgba(48,203,255,0.35)); }
+    .tile.minecraft { background: linear-gradient(135deg, rgba(84,145,76,0.6), rgba(72,100,42,0.45), rgba(102,62,33,0.45)); }
+    .tile.fallguys { background: linear-gradient(135deg, rgba(0,222,255,0.45), rgba(255,88,198,0.42), rgba(126,63,255,0.38)); }
+    .tile.roblox { background: linear-gradient(135deg, rgba(25,25,25,0.55), rgba(105,105,105,0.38)); }
+    .tile.playroom { background: linear-gradient(135deg, rgba(54,160,255,0.42), rgba(0,85,190,0.45), rgba(0,38,123,0.35)); }
+
+    @media (max-width: 1700px) {
+      .home-screen { transform-origin: top left; }
+      .main-row, .section-title, .feed-area, .side-panel { transform: scale(0.82); transform-origin: top left; }
+      .side-panel { right: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="screen boot-screen" id="bootScreen">
+    <div class="boot-wave"></div>
+    <div class="boot-content">
+      <div class="ps-mark">
+        <div class="ps-icon">PS</div>
+        <div class="ps-word">PlayStation</div>
+      </div>
+      <div class="boot-title">Welcome to PlayStation</div>
+      <div class="boot-subtitle">Press the Space button to connect</div>
+      <div class="boot-key">SPACE</div>
+    </div>
+    <div class="boot-press" id="bootPress">Press Space to connect</div>
+    <div class="boot-button-wrap" id="bootButtonWrap">
+      <button class="boot-up-btn" id="bootUpBtn">Boot Up PS4</button>
+    </div>
+    <div class="boot-footer">System startup</div>
+  </section>
+
+  <section class="screen action-screen hidden" id="actionScreen">
+    <div class="action-wave"></div>
+    <div class="action-content">
+      <div class="action-wrap">
+        <div class="action-topline">
+          <div class="shape-stack"><span>△</span><span>○</span><span>✕</span><span>□</span></div>
+          <div id="actionTitle">Restarting the PS4...</div>
+        </div>
+        <div class="action-body">
+          <div class="ps4-box">
+            <div class="ps4-light"></div>
+          </div>
+          <div class="action-message">
+            <div class="action-note" id="actionNote">Do not unplug the AC power cord when the power indicator on the PS4 is lit or blinking.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen home-screen hidden" id="homeScreen">
+    <div class="top-icons">
+      <div class="top-left">
+        <span>✚</span>
+        <span>ℹ</span>
+      </div>
+
+      <div class="top-center">
+        <span>◉ 4</span>
+        <span>⌘</span>
+        <div class="tiny-dot"></div>
+        <div class="profile-pic">W</div>
+        <div class="username">WFAN</div>
+        <div class="plus-badge">✚</div>
+      </div>
+
+      <div class="top-right">
+        <div class="trophy-wrap">🏆 <span>16</span></div>
+        <div class="time" id="clock">14:36</div>
+      </div>
+    </div>
+
+    <div class="main-row">
+      <div class="carousel-window">
+        <div class="tiles" id="tiles">
+          <div class="tile small" data-title="PlayStation Store" data-icon="🛍" data-label="PlayStation Store">
+            <div class="tile-icon">🛍</div>
+            <div class="tile-label">PlayStation Store</div>
+          </div>
+
+          <div class="tile active" data-title="What's New" data-icon="□ △<br>✕ ○" data-label="What's New">
+            <div class="active-main">
+              <div class="tile-icon">□ △<br>✕ ○</div>
+            </div>
+            <div class="active-bottom">⬇</div>
+          </div>
+
+          <div class="tile small" data-title="Need for Speed™ Heat" data-icon="NFS" data-label="Need for Speed™ Heat" data-game="true">
+            <div class="tile-icon">NFS</div>
+            <div class="tile-label">Need for Speed™ Heat</div>
+          </div>
+
+          <div class="tile small minecraft" data-title="Minecraft" data-icon="MC" data-label="Minecraft" data-game="true">
+            <div class="tile-icon">MC</div>
+            <div class="tile-label">Minecraft</div>
+          </div>
+
+          <div class="tile small fallguys" data-title="Fall Guys" data-icon="FG" data-label="Fall Guys" data-game="true">
+            <div class="tile-icon">FG</div>
+            <div class="tile-label">Fall Guys</div>
+          </div>
+
+          <div class="tile small roblox" data-title="Roblox" data-icon="◧" data-label="Roblox" data-game="true">
+            <div class="tile-icon">◧</div>
+            <div class="tile-label">Roblox</div>
+          </div>
+
+          <div class="tile small playroom" data-title="THE PLAYROOM" data-icon="▶" data-label="THE PLAYROOM" data-game="true">
+            <div class="tile-icon">▶</div>
+            <div class="tile-label">THE PLAYROOM</div>
+          </div>
+
+          <div class="tile small" data-title="Capture Gallery" data-icon="▣" data-label="Capture Gallery">
+            <div class="tile-icon">▣</div>
+            <div class="tile-label">Capture Gallery</div>
+          </div>
+
+          <div class="tile small" data-title="TV & Video" data-icon="▭" data-label="TV & Video">
+            <div class="tile-icon">▭</div>
+            <div class="tile-label">TV & Video</div>
+          </div>
+
+          <div class="tile small" data-title="Internet Browser" data-icon="WWW" data-label="Internet Browser">
+            <div class="tile-icon" style="font-size:56px; letter-spacing:2px;">WWW</div>
+            <div class="tile-label">Internet Browser</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title" id="sectionTitle">What's New</div>
+
+    <div class="feed-area" id="feedArea">
+      <div class="feed-header">
+        <div class="mini-avatar">User</div>
+        <div class="mini-cover">Game</div>
+        <div>
+          <div class="feed-text"><strong>WFAN</strong> played <strong>UNCHARTED 4 A THIEF'S END</strong> for the first time.</div>
+          <div class="feed-time">2 hrs ago</div>
+        </div>
+      </div>
+      <div class="feed-image"></div>
+    </div>
+
+    <div class="side-panel" id="sidePanel">
+      <div class="side-title">Now Playing</div>
+      <div class="now-playing">
+        <div class="np-cover"></div>
+        <div class="np-text">
+          <div>No Man's Sky</div>
+          <div class="np-sub">WFAN</div>
+        </div>
+      </div>
+
+      <div class="side-title">Trending</div>
+      <div class="trend-row">
+        <div class="trend-card"></div>
+        <div class="trend-card"></div>
+        <div class="trend-card"></div>
+      </div>
+
+      <div class="side-title">Players You May Know</div>
+      <div class="players-row">
+        <div class="player-chip"></div>
+        <div class="player-chip"></div>
+        <div class="player-chip"></div>
+      </div>
+    </div>
+
+    <div class="power-panel" id="powerPanel">
+      <div class="power-header">Power</div>
+      <div class="power-option active">Enter Rest Mode</div>
+      <div class="power-option">Turn Off PS4</div>
+      <div class="power-option">Restart PS4</div>
+    </div>
+
+    <div class="hintbar">
+      <div class="hint"><span class="btn">Space</span> boot / continue</div>
+      <div class="hint"><span class="btn">←</span><span class="btn">→</span> move screen</div>
+      <div class="hint"><span class="btn">↑</span><span class="btn">↓</span> quick menu</div>
+      <div class="hint"><span class="btn">Enter</span> open</div>
+    </div>
+  </section>
+
+  <script>
+    const bootScreen = document.getElementById('bootScreen');
+    const homeScreen = document.getElementById('homeScreen');
+    const actionScreen = document.getElementById('actionScreen');
+    const actionTitle = document.getElementById('actionTitle');
+    const actionNote = document.getElementById('actionNote');
+    const clock = document.getElementById('clock');
+    const tilesWrap = document.getElementById('tiles');
+    const tiles = [...document.querySelectorAll('.tile')];
+    const sectionTitle = document.getElementById('sectionTitle');
+    const feedArea = document.getElementById('feedArea');
+    const sidePanel = document.getElementById('sidePanel');
+    const powerPanel = document.getElementById('powerPanel');
+    const powerOptions = [...document.querySelectorAll('.power-option')];
+    const bootPress = document.getElementById('bootPress');
+    const bootUpBtn = document.getElementById('bootUpBtn');
+    const movableParts = [document.querySelector('.main-row'), sectionTitle, feedArea, sidePanel];
+
+    let connected = false;
+    let activeIndex = 1;
+    let menuUp = false;
+    let powerIndex = 0;
+    let systemState = 'boot';
+    let actionTimer = null;
+
+    function updateClock() {
+      if (!clock) return;
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      clock.textContent = `${h}:${m}`;
+    }
+
+    function getBaseTileMarkup(tile) {
+      const icon = tile.dataset.icon || '□';
+      const label = tile.dataset.label || '';
+      const title = tile.dataset.title || '';
+      const isBrowser = title === 'Internet Browser';
+      const iconStyle = isBrowser ? 'font-size:56px; letter-spacing:2px;' : '';
+      return `
+        <div class="tile-icon" style="${iconStyle}">${icon}</div>
+        <div class="tile-label">${label}</div>
+      `;
+    }
+
+    function getActiveMarkup(tile) {
+      const icon = tile.dataset.icon || '□';
+      const title = tile.dataset.title || '';
+      const isGame = tile.dataset.game === 'true';
+      let iconStyle = '';
+      if (title === 'Internet Browser') iconStyle = 'font-size:56px; letter-spacing:2px;';
+      if (title === 'Need for Speed™ Heat') iconStyle = 'font-size:62px; letter-spacing:2px; font-weight:600;';
+      if (title === 'Minecraft') iconStyle = 'font-size:68px; letter-spacing:2px; font-weight:700;';
+      if (title === 'Fall Guys') iconStyle = 'font-size:66px; letter-spacing:2px; font-weight:700;';
+      if (title === 'Roblox') iconStyle = 'font-size:90px; letter-spacing:1px;';
+      if (title === 'THE PLAYROOM') iconStyle = 'font-size:92px; letter-spacing:1px;';
+      return `
+        <div class="active-main">
+          <div class="tile-icon" style="${iconStyle}">${icon}</div>
+        </div>
+        <div class="active-bottom">${isGame ? '▶' : '⬇'}</div>
+      `;
+    }
+
+    function updateRibbonOffset() {
+      const activeTile = tiles[activeIndex];
+      if (!activeTile) return;
+      const targetX = Math.max(0, activeTile.offsetLeft - 240);
+      tilesWrap.style.transform = `translateX(${-targetX}px)`;
+      sectionTitle.style.transform = 'translateX(0px)';
+      feedArea.style.transform = `translateX(${-Math.max(0, targetX * 0.35)}px)`;
+      sidePanel.style.transform = `translateX(${-Math.max(0, targetX * 0.12)}px)`;
+    }
+
+    function updateSections() {
+      const title = tiles[activeIndex]?.dataset.title || '';
+      sectionTitle.textContent = title;
+      if (title === "What's New") {
+        feedArea.style.opacity = '1';
+        sidePanel.style.opacity = '1';
+      } else {
+        feedArea.style.opacity = '0.82';
+        sidePanel.style.opacity = '0.9';
+      }
+    }
+
+    function renderTiles() {
+      tiles.forEach((tile) => {
+        tile.classList.remove('active');
+        tile.classList.add('small');
+        tile.innerHTML = getBaseTileMarkup(tile);
+      });
+
+      const selected = tiles[activeIndex];
+      if (!selected) return;
+      selected.classList.remove('small');
+      selected.classList.add('active');
+      selected.innerHTML = getActiveMarkup(selected);
+
+      updateRibbonOffset();
+      updateSections();
+    }
+
+    function renderPowerMenu() {
+      powerOptions.forEach((option, i) => {
+        option.classList.toggle('active', i === powerIndex);
+      });
+    }
+
+    function openPowerMenu() {
+      menuUp = true;
+      movableParts.forEach((part) => part && part.classList.add('screen-shift'));
+      powerPanel.classList.add('visible');
+      renderPowerMenu();
+    }
+
+    function closePowerMenu() {
+      menuUp = false;
+      movableParts.forEach((part) => part && part.classList.remove('screen-shift'));
+      powerPanel.classList.remove('visible');
+    }
+
+    function showActionScreen(mode) {
+      const labels = {
+        rest: 'Putting the PS4 into rest mode...',
+        off: 'Preparing to turn off the PS4...',
+        restart: 'Restarting the PS4...'
+      };
+
+      actionTitle.textContent = labels[mode] || 'Working...';
+      actionNote.textContent = 'Do not unplug the AC power cord when the power indicator on the PS4 is lit or blinking.';
+      systemState = 'transition';
+      connected = false;
+      closePowerMenu();
+      homeScreen.classList.add('hidden');
+      actionScreen.classList.remove('hidden');
+
+      if (actionTimer) clearTimeout(actionTimer);
+      actionTimer = setTimeout(() => {
+        actionScreen.classList.add('hidden');
+        bootScreen.classList.remove('hidden', 'off-state', 'rest-state');
+        bootScreen.classList.add('shutdown');
+        if (bootPress) bootPress.style.display = 'none';
+
+        if (mode === 'off') {
+          systemState = 'off';
+          bootScreen.classList.add('off-state');
+        } else if (mode === 'rest') {
+          systemState = 'rest';
+          bootScreen.classList.add('rest-state');
+        } else {
+          systemState = 'boot';
+          setTimeout(() => {
+            bootScreen.classList.remove('shutdown', 'off-state', 'rest-state');
+            if (bootPress) bootPress.style.display = 'block';
+          }, 1600);
+        }
+      }, 1600);
+    }
+
+    function connectSystem() {
+      if (connected) return;
+      connected = true;
+      systemState = 'home';
+      if (actionTimer) clearTimeout(actionTimer);
+      bootScreen.classList.remove('shutdown', 'off-state', 'rest-state');
+      if (bootPress) bootPress.style.display = 'block';
+      bootScreen.classList.add('hidden');
+      actionScreen.classList.add('hidden');
+      setTimeout(() => {
+        homeScreen.classList.remove('hidden');
+        renderTiles();
+      }, 380);
+    }
+
+    function bootSystem() {
+      if (actionTimer) clearTimeout(actionTimer);
+      actionScreen.classList.add('hidden');
+      homeScreen.classList.add('hidden');
+      connected = false;
+      systemState = 'boot';
+      bootScreen.classList.remove('shutdown', 'off-state', 'rest-state');
+      if (bootPress) bootPress.style.display = 'block';
+      setTimeout(() => {
+        connectSystem();
+      }, 120);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!connected) {
+        if (e.code === 'Space' && systemState === 'boot' && !bootScreen.classList.contains('shutdown')) {
+          e.preventDefault();
+          connectSystem();
+        }
+        if (e.key === 'Enter' && (systemState === 'off' || systemState === 'rest')) {
+          e.preventDefault();
+          bootSystem();
+        }
+        return;
+      }
+
+      if (menuUp) {
+        if (e.key === 'ArrowDown') {
+          powerIndex = Math.min(powerIndex + 1, powerOptions.length - 1);
+          renderPowerMenu();
+        } else if (e.key === 'ArrowUp') {
+          if (powerIndex === 0) {
+            closePowerMenu();
+          } else {
+            powerIndex = Math.max(powerIndex - 1, 0);
+            renderPowerMenu();
+          }
+        } else if (e.key === 'Enter') {
+          const choice = powerOptions[powerIndex]?.textContent || '';
+          if (choice === 'Enter Rest Mode') showActionScreen('rest');
+          else if (choice === 'Turn Off PS4') showActionScreen('off');
+          else if (choice === 'Restart PS4') showActionScreen('restart');
+        } else if (e.key === 'Escape' || e.key === 'ArrowLeft') {
+          closePowerMenu();
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowRight') {
+        activeIndex = Math.min(activeIndex + 1, tiles.length - 1);
+        renderTiles();
+      } else if (e.key === 'ArrowLeft') {
+        activeIndex = Math.max(activeIndex - 1, 0);
+        renderTiles();
+      } else if (e.key === 'ArrowUp') {
+        openPowerMenu();
+      } else if (e.key === 'Enter') {
+        alert('Opening ' + (tiles[activeIndex]?.dataset.title || 'item'));
+      } else if (e.code === 'Space') {
+        if (actionTimer) clearTimeout(actionTimer);
+        bootScreen.classList.remove('hidden', 'shutdown', 'off-state', 'rest-state');
+        if (bootPress) bootPress.style.display = 'block';
+        homeScreen.classList.add('hidden');
+        actionScreen.classList.add('hidden');
+        closePowerMenu();
+        connected = false;
+        systemState = 'boot';
+      }
+    });
+
+    tiles.forEach((tile, i) => {
+      tile.addEventListener('click', () => {
+        if (!connected || menuUp) return;
+        activeIndex = i;
+        renderTiles();
+      });
+    });
+
+    powerOptions.forEach((option, i) => {
+      option.addEventListener('click', () => {
+        if (!menuUp) return;
+        powerIndex = i;
+        renderPowerMenu();
+        const choice = option.textContent;
+        if (choice === 'Enter Rest Mode') showActionScreen('rest');
+        else if (choice === 'Turn Off PS4') showActionScreen('off');
+        else if (choice === 'Restart PS4') showActionScreen('restart');
+      });
+    });
+
+    if (bootUpBtn) {
+      bootUpBtn.addEventListener('click', () => {
+        if (systemState === 'off' || systemState === 'rest') {
+          bootSystem();
+        }
+      });
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    renderTiles();
+  </script>
+</body>
+</html>
